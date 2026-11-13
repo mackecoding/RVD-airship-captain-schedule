@@ -227,9 +227,9 @@ footer { color: #56687d; font-size: 12.5px; font-family: var(--f-display); lette
 
 <div class="wrap">
   <header>
-    <div class="eyebrow">X-Clash · USS Immortal · Airship</div>
+    <div class="eyebrow">X-Clash · [RVD] ReservoirDogs · Airship</div>
     <h1>Airship <span class="hl">Captain</span> Schedule</h1>
-    <p class="lede">Who captains the airship today, and who is next. The nine regulars take turns in A–Z order. Every Sunday the leadership picks a captain from outside the group after the VS results, so the regular due that day moves to Monday. Tap a day to set or change its captain.</p>
+    <p class="lede">Who captains the airship today, and who is next. The 26 captains take turns in A–Z order, one day each, every day of the week. Tap a day to set or change its captain.</p>
   </header>
 
   <section class="panel zone-bar" aria-label="Where you live" style="--tc:var(--rune)">
@@ -265,7 +265,7 @@ footer { color: #56687d; font-size: 12.5px; font-family: var(--f-display); lette
       </div>
     </div>
     <div class="grid" id="grid" role="grid" aria-label="Captain calendar"></div>
-    <div class="foot-note">USS Immortal · Captain Schedule</div>
+    <div class="foot-note">[RVD] ReservoirDogs · Captain Schedule</div>
   </section>
 
   <div class="lower">
@@ -290,13 +290,6 @@ footer { color: #56687d; font-size: 12.5px; font-family: var(--f-display); lette
     </section>
   </div>
 
-  <section class="panel box picks-box" aria-label="Leadership picks" style="--tc:var(--gold)">
-    <div class="picks-head"><h2>⭐ Leadership picks</h2><span class="picks-sum" id="picks-sum"></span></div>
-    <p>Players from outside the nine regulars, chosen by the leadership every Sunday after the VS results. Tap a name to highlight their Sundays in the calendar.</p>
-    <div class="pk-head" aria-hidden="true"><span>#</span><span>Player</span><span>Picks</span><span>Picked on (newest first)</span></div>
-    <ul class="pk-list" id="picks-list"></ul>
-  </section>
-
   <section class="panel box" aria-label="Fill rotation" style="--tc:var(--gold)">
     <h2>Fill rotation</h2>
     <p>Fills a period with one captain per day, in the order below, starting over after the last name. The first captain is picked to continue the rotation from the day before.</p>
@@ -309,7 +302,7 @@ footer { color: #56687d; font-size: 12.5px; font-family: var(--f-display); lette
       <div><label class="label" for="rot-from">From</label><input class="field" id="rot-from" type="date"></div>
       <div><label class="label" for="rot-to">To</label><input class="field" id="rot-to" type="date"></div>
       <div><label class="label" for="rot-first">First captain</label><select class="field" id="rot-first"></select></div>
-      <label class="rot-check"><input type="checkbox" id="rot-sun" checked> Leave Sundays open for the leadership pick (the captain due moves to Monday)</label>
+      <input type="checkbox" id="rot-sun" hidden>
       <label class="rot-check"><input type="checkbox" id="rot-over"> Replace captains already set in this period</label>
     </div>
     <p class="rot-preview" id="rot-preview"></p>
@@ -330,16 +323,19 @@ footer { color: #56687d; font-size: 12.5px; font-family: var(--f-display); lette
     <p class="msg" id="share-msg" role="status"></p>
   </section>
 
-  <footer>Immortals union · for the hunt</footer>
+  <footer>[RVD] ReservoirDogs · Airship Captain Schedule</footer>
 </div>
 
 <script>
-const KEY = "airship-captains-v1";
+const KEY = "airship-captains-rvd-v1"; // new union, new schedule: the old Immortals schedule is not carried over
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const DOW = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 const DOW_SHORT = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
-// The nine regular captains, in alphabetical (rotation) order
-const REGULARS = ["Aaron", "Catarina", "ChaRLy", "Death", "Dee", "Domi", "Paulo", "Rellvosh", "Wargh"];
+// The 26 captains of [RVD] ReservoirDogs, in alphabetical (rotation) order
+const REGULARS = ["JaySmooth", "Dustification", "PuffyPanda", "BON3S", "VioletRaven", "AZREAL", "Melody", "Laney", "AlexanderDuma", "AZHIAZIAM",
+  "Wargh", "DeezyDee", "FrostyDroste", "xXmasterXx", "WarQueen", "ObladiOblada", "Deathmonger", "Shanks", "Paulo", "LumsBetterHalf",
+  "JazzyWeenr", "Pzzpob", "CPERKINS7", "TravelerDee1", "Edgerunner", "Tash.0"]
+  .sort((a, b) => a.localeCompare(b, "en", { sensitivity: "base" }));
 // One captain per day, taking the names in order and starting over after the last one
 // skipSundays: Sundays stay open for the leadership's pick after VS, and the captain due that day moves to Monday
 function rotationDays(names, fromKey, toKey, startIndex = 0, skipSundays = false) {
@@ -353,22 +349,11 @@ function rotationDays(names, fromKey, toKey, startIndex = 0, skipSundays = false
   return out;
 }
 const isSunday = k => { const [y, m, d] = k.split("-").map(Number); return new Date(y, m - 1, d).getDay() === 0; };
-const SUNDAY_RULE_FROM = "2026-10-18"; // Sundays from 18 Oct on are the leadership's pick
-// Starting schedule: 11–13 Oct from the October calendar, the A–Z rotation 14–17 Oct,
-// then from Sunday 18 Oct the same rotation with every Sunday left open (Dee, due on 18 Oct, moves to Monday 19 Oct)
-const BASE = { "2026-10-11": "Paulo", "2026-10-12": "Catarina", "2026-10-13": "Rellvosh" };
-// Plan shifted one day (we fell behind): Paulo starts on Mon 12 Oct instead of Sun 11 Oct, then Catarina and Rellvosh,
-// and the A–Z rotation starts with Aaron on 15 Oct. Sundays from 18 Oct are the leadership's pick (Nihc on 18 Oct).
-const BASE_SHIFTED = { "2026-10-12": "Paulo", "2026-10-13": "Catarina", "2026-10-14": "Rellvosh" };
-const SEED = { ...BASE_SHIFTED, ...rotationDays(REGULARS, "2026-10-15", "2026-12-31", 0, true), "2026-10-18": "Nihc" };
-// earlier versions of the plan, used to update days nobody has edited by hand
-const OLD_SEEDS = [
-  { ...BASE, ...rotationDays(REGULARS, "2026-10-14", "2026-12-31") },                                                          // v2: no Sunday rule
-  { ...BASE, ...rotationDays(REGULARS, "2026-10-14", "2026-10-18"), ...rotationDays(REGULARS, "2026-10-19", "2026-12-31", 5, true) }, // v3: Sunday rule from 25 Oct
-  { ...BASE, ...rotationDays(REGULARS, "2026-10-14", "2026-10-17"), ...rotationDays(REGULARS, SUNDAY_RULE_FROM, "2026-12-31", 4, true) }, // v4: Sunday rule from 18 Oct, no picks yet
-  { ...BASE, ...rotationDays(REGULARS, "2026-10-14", "2026-10-17"), ...rotationDays(REGULARS, SUNDAY_RULE_FROM, "2026-12-31", 4, true), "2026-10-18": "Nihc" } // v5: Nihc picked on 18 Oct
-];
-const SEED_VERSION = 6;
+const SUNDAY_RULE_FROM = "9999-12-31"; // no leadership picks in this union: every day goes to the rotation
+// Starting schedule: from Friday 13 Nov 2026 the 26 captains in A–Z order, one per day, every day
+const SEED = rotationDays(REGULARS, "2026-11-13", "2026-12-31");
+const OLD_SEEDS = [];
+const SEED_VERSION = 1;
 // a leadership pick is whoever is set on a Sunday from 18 Oct on
 const isPickDay = k => isSunday(k) && k >= SUNDAY_RULE_FROM;
 const regularDays = () => Object.keys(store.days).filter(k => !isPickDay(k));
@@ -533,7 +518,7 @@ try {
   if (s && s.days) {
     store = { days: clean(s.days), seedV: Number(s.seedV) || 1 };
     // schedule saved by an earlier version: add the new rotation days, never overwrite days someone already set
-    if (store.seedV < SEED_VERSION) {
+    if (store.seedV < SEED_VERSION && OLD_SEEDS.length) {
       // update days that still hold the old plan (or are empty); days someone changed by hand stay as they are
       const oldPlan = OLD_SEEDS[Math.min(Math.max(store.seedV - 2, 0), OLD_SEEDS.length - 1)];
       new Set([...Object.keys(oldPlan), ...Object.keys(SEED)]).forEach(k => {
@@ -559,7 +544,9 @@ function captains() {
 function colorOf(name) {
   if (!name) return "var(--muted)";
   const i = captains().findIndex(n => n.toLowerCase() === name.toLowerCase());
-  return PALETTE[(i < 0 ? captains().length : i) % PALETTE.length];
+  const n = i < 0 ? captains().length : i;
+  // 12 hand-picked colours first, then evenly spread hues so 26+ captains stay apart
+  return n < PALETTE.length ? PALETTE[n] : `hsl(${Math.round((n * 137.508 + 20) % 360)} 70% 66%)`;
 }
 const parseKey = k => { const [y, m, d] = k.split("-").map(Number); return new Date(y, m - 1, d); };
 const nice = k => { const d = parseKey(k); return `${DOW[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`; };
@@ -650,7 +637,7 @@ function renderPicks() {
     </li>`).join("")
     : `<li class="pk-empty">No leadership picks yet. Tap a Sunday in the calendar and type the chosen player's name.</li>`;
 }
-function renderAll() { renderBridge(); renderCal(); renderEditor(); renderRoster(); renderPicks(); }
+function renderAll() { renderBridge(); renderCal(); renderEditor(); renderRoster(); }
 
 function setMsg(id, t, kind) { const m = document.getElementById(id); m.className = "msg " + (kind || ""); m.textContent = t; }
 
@@ -682,16 +669,10 @@ document.getElementById("cap-clear").addEventListener("click", () => {
   document.getElementById("cap-in").value = "";
   setMsg("cap-msg", `${n} removed from ${nice(selected)}.`, "ok"); renderAll();
 });
-document.getElementById("picks-list").addEventListener("click", e => {
-  const li = e.target.closest("li[data-name]"); if (!li) return;
-  highlight = highlight && nameEq(highlight, li.dataset.name) ? null : li.dataset.name;
-  renderCal(); renderRoster(); renderPicks();
-});
-document.getElementById("picks-list").addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.matches("li[data-name]")) { e.preventDefault(); e.target.click(); } });
 document.getElementById("roster").addEventListener("click", e => {
   const li = e.target.closest("li[data-name]"); if (!li) return;
   highlight = highlight && highlight.toLowerCase() === li.dataset.name.toLowerCase() ? null : li.dataset.name;
-  renderCal(); renderRoster(); renderPicks();
+  renderCal(); renderRoster();
 });
 document.getElementById("roster").addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.matches("li[data-name]")) { e.preventDefault(); e.target.click(); } });
 function goMonth(dy, dm) { const d = new Date(viewY, viewM + dm, 1); viewY = d.getFullYear(); viewM = d.getMonth(); renderCal(); renderRoster(); }
@@ -803,7 +784,7 @@ function refreshRotation(resetFirst) {
     (taken ? (rotOver.checked ? `${taken} already set will be replaced where different (${changes} changes).` : `${taken} already have a captain and stay as they are; ${changes} empty days get filled.`) : `All ${ks.length} days are empty.`);
 }
 function initRotation() {
-  if (!rotNames.value.trim()) rotNames.value = REGULARS.join(", "); // the nine regulars; one-off stand-ins are not added to the rotation
+  if (!rotNames.value.trim()) rotNames.value = REGULARS.join(", "); // the 26 captains; one-off stand-ins are not added to the rotation
   const from = addDays(lastScheduled() < TODAY ? TODAY : lastScheduled(), 1);
   const f = parseKey(from), e = new Date(f.getFullYear(), f.getMonth() + 2, 0); // to the last day of the following month
   const to = keyOf(e.getFullYear(), e.getMonth(), e.getDate());
