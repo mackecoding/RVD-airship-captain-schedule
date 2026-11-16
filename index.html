@@ -151,6 +151,8 @@ h1 .hl { color: var(--gold); text-shadow: 0 0 24px rgba(240,181,74,.35); }
 .zone-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding: 12px 16px; }
 .seg { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .seg .label { margin-right: 4px; }
+.clock-seg { margin-left: auto; }
+@media (max-width: 640px) { .clock-seg { margin-left: 0; } }
 .seg-btn { clip-path: none; border-radius: 3px; padding: 7px 12px; font-size: 12.5px; letter-spacing: .08em; }
 .seg-btn[aria-checked="true"] { background: var(--rune); border-color: var(--rune); color: var(--bg); }
 .zone-bar .zone-sel { width: auto; min-width: 0; max-width: 100%; padding: 7px 10px; font-size: 14px; }
@@ -240,6 +242,11 @@ footer { color: #56687d; font-size: 12.5px; font-family: var(--f-display); lette
       <button type="button" class="seg-btn" role="radio" data-region="other">🌐 All time zones</button>
     </div>
     <select class="field zone-sel" id="zone-sel" aria-label="Time zone"></select>
+    <div class="seg clock-seg" role="radiogroup" aria-label="Clock">
+      <span class="label">Clock</span>
+      <button type="button" class="seg-btn" role="radio" data-clock="24">24h</button>
+      <button type="button" class="seg-btn" role="radio" data-clock="12">12h</button>
+    </div>
     <p class="zone-note" id="zone-note"></p>
   </section>
 
@@ -505,7 +512,13 @@ let tzPref = (() => {
 })();
 const zoneLabel = () => (ZONES[tzPref.region].find(z => z.tz === tzPref.tz) || ZONES.other[0]).label;
 const fmtIn = (ms, opts) => new Intl.DateTimeFormat("en-GB", { timeZone: tzPref.tz, ...opts }).format(ms);
-const hm = ms => fmtIn(ms, { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+// Clock: 24-hour ("22:00") or 12-hour AM/PM ("10:00 PM"). Saved per viewer; without a saved choice, USA uses AM/PM and the rest 24-hour.
+let clockPref = (() => { try { const c = localStorage.getItem("airship-clock"); return c === "12" || c === "24" ? c : null; } catch (e) { return null; } })();
+const use12h = () => (clockPref || (tzPref.region === "us" ? "12" : "24")) === "12";
+const hour24 = ms => Number(new Intl.DateTimeFormat("en-GB", { timeZone: tzPref.tz, hour: "2-digit", hourCycle: "h23" }).format(ms));
+const hm = ms => use12h()
+  ? new Intl.DateTimeFormat("en-US", { timeZone: tzPref.tz, hour: "numeric", minute: "2-digit", hour12: true }).format(ms)
+  : fmtIn(ms, { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
 const localDayKey = ms => { const p = new Intl.DateTimeFormat("en-CA", { timeZone: tzPref.tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(ms); return p; };
 // "04:00" when the shift starts on the same calendar date in your zone, otherwise "Mon 22:00"
 const shiftStart = k => { const ms = resetMs(k); return localDayKey(ms) === k ? hm(ms) : `${fmtIn(ms, { weekday: "short" })} ${hm(ms)}`; };
@@ -715,15 +728,22 @@ renderAll();
 
 /* ---- zone switch ---- */
 function renderZone() {
-  document.querySelectorAll(".seg-btn").forEach(b => b.setAttribute("aria-checked", b.dataset.region === tzPref.region));
+  document.querySelectorAll(".clock-seg .seg-btn").forEach(b => b.setAttribute("aria-checked", (b.dataset.clock === "12") === use12h()));
+  document.querySelectorAll(".seg-btn[data-region]").forEach(b => b.setAttribute("aria-checked", b.dataset.region === tzPref.region));
   const sel = document.getElementById("zone-sel");
   sel.innerHTML = ZONES[tzPref.region].map(z => `<option value="${esc(z.tz)}"${z.tz === tzPref.tz ? " selected" : ""}>${tzPref.region === "other" ? esc(utcOffset(z.tz)) + " · " : ""}${esc(z.label)}</option>`).join("");
   sel.hidden = ZONES[tzPref.region].length < 2;
   const k = TODAY, a = resetMs(k), prevDay = localDayKey(a) !== k;
-  document.getElementById("zone-note").innerHTML = `Server reset 00:00 UTC-2. The captain changes at <b>${esc(hm(a))}${prevDay ? (Number(hm(a).slice(0, 2)) >= 18 ? " the evening before" : " the day before") : ""}</b> your time · ${esc(zoneLabel())}. Times follow summer and winter time automatically.`;
+  document.getElementById("zone-note").innerHTML = `Server reset 00:00 UTC-2. The captain changes at <b>${esc(hm(a))}${prevDay ? (hour24(a) >= 18 ? " the evening before" : " the day before") : ""}</b> your time · ${esc(zoneLabel())}. Times follow summer and winter time automatically.`;
 }
-document.querySelector(".seg").addEventListener("click", e => {
+document.querySelector(".clock-seg").addEventListener("click", e => {
   const b = e.target.closest(".seg-btn"); if (!b) return;
+  clockPref = b.dataset.clock;
+  try { localStorage.setItem("airship-clock", clockPref); } catch (e) {}
+  renderZone(); renderAll();
+});
+document.querySelector(".seg").addEventListener("click", e => {
+  const b = e.target.closest(".seg-btn[data-region]"); if (!b) return;
   const region = b.dataset.region;
   tzPref = { region, tz: region === "other" ? DEVICE_TZ : (ZONES[region].find(z => z.tz === DEVICE_TZ) || ZONES[region][0]).tz };
   try { localStorage.setItem("airship-tz", JSON.stringify(tzPref)); } catch (e) {}
